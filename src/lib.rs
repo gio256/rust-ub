@@ -42,6 +42,7 @@ mod validity {
 #[cfg(test)]
 mod borrows {
     use core::cell::UnsafeCell;
+    use core::ptr;
 
     extern "Rust" {
         fn miri_get_alloc_id(ptr: *const u8) -> u64;
@@ -52,10 +53,8 @@ mod borrows {
         unsafe { miri_get_alloc_id(ptr) }
     }
 
-    fn print_borrow_stacks(alloc_id: u64) {
-        unsafe {
-            miri_print_borrow_state(alloc_id, true)
-        }
+    fn dbg_bor(alloc_id: u64) {
+        unsafe { miri_print_borrow_state(alloc_id, true) }
     }
 
     #[test]
@@ -93,6 +92,29 @@ mod borrows {
         let _ = unsafe { *x };
     }
 
+    /// This is UB because reading x disables y.
+    #[test]
+    fn test_disable_unique() {
+        let mut val = 1_u8;
+        let x: *mut u8 = &mut val;
+        let y = unsafe { &mut *x };
+        // This disables the Unique y.
+        let _ = unsafe { ptr::read(x) };
+        let _z = *y; // UB
+    }
+
+    /// This is not UB because y is now a SharedReadWrite derived from the disabled Unique.
+    #[test]
+    fn test_ok_disable_unique() {
+        let mut val = 1_u8;
+        let x: *mut u8 = &mut val;
+        let y: *mut u8 = unsafe { &mut *x };
+        // This disables the Unique that y is derived from, but not y itself.
+        let _ = unsafe { ptr::read(x) };
+        let _z = unsafe { *y };
+    }
+
+
     #[test]
     fn test_cell() {
         let x = 0_usize;
@@ -109,5 +131,4 @@ mod borrows {
         let _ = unsafe { *u };
         let _ = unsafe { *s };
     }
-
 }
