@@ -28,55 +28,78 @@ mod ptr {
 }
 
 #[cfg(test)]
-mod validity {
-    use core::mem::transmute;
-
-    #[test]
-    fn test_bad_bool() {
-        let x = 2_u8;
-        #[allow(clippy::transmute_int_to_bool)]
-        let _: bool = unsafe { transmute(x) };
-    }
-}
-
-#[cfg(test)]
 mod borrows {
-    use core::cell::UnsafeCell;
-    use core::ptr;
+    use core::cell::{Cell, UnsafeCell};
+    use core::{mem, ptr};
 
+    // Miri extern functions for inspecting the borrow state.
     extern "Rust" {
         fn miri_get_alloc_id(ptr: *const u8) -> u64;
         fn miri_print_borrow_state(alloc_id: u64, show_unnamed: bool);
     }
 
+    /// Retrieve the unique identifier for the allocation pointed to by `ptr`.
     fn get_alloc_id(ptr: *const u8) -> u64 {
         unsafe { miri_get_alloc_id(ptr) }
     }
 
-    fn dbg_bor(alloc_id: u64) {
+    /// Print (from the Miri interpreter) the contents of all borrows in an allocation.
+    fn dbg_borrows(alloc_id: u64) {
+        println!();
         unsafe { miri_print_borrow_state(alloc_id, true) }
     }
 
     #[test]
-    fn test_reborrow_dbg() {
-        let mut val = 1_u8;
-        let alloc_id = get_alloc_id(&val as *const u8);
-        print_borrow_stacks(alloc_id);
-
-        let x: *mut u8 = &mut val;
-        print_borrow_stacks(alloc_id);
-
-        // let _y: *mut u8 = unsafe { &mut *x }; // ok
-        let _y: *mut u8 = &mut val; // not ok
-        print_borrow_stacks(alloc_id);
-
-        let _ = unsafe { *x };
-        print_borrow_stacks(alloc_id);
+    fn test_dbg() {
+        let val = 1_u8;
+        let alloc = get_alloc_id(&val as *const u8);
+        dbg_borrows(alloc);
     }
 
-    /// This is UB. The parent of `_y` is `val`, which pops x off the stack.
+    /// This is UB under Stacked Borrows but ok under Tree Borrows.
     #[test]
-    fn test_reborrow() {
+    fn test_reserved() {
+        let mut val = 1_u8;
+        let x = &mut val;
+        let y = unsafe { &mut *(x as *mut u8) };
+        // Under SB, this performs a dummy read granted by x which disables y.
+        let s = &*x;
+        assert_eq!(*s, 1);
+        *y = 2;
+        assert_eq!(val, 2);
+    }
+
+    /// This is UB under Stacked Borrows but ok under Tree Borrows.
+    #[test]
+    fn test_copy_nonoverlapping() {
+        let mut val = [1_u8, 2];
+        let src = val.as_ptr();
+        let dst = unsafe { val.as_mut_ptr().add(1) };
+        unsafe { ptr::copy_nonoverlapping(src, dst, 1) };
+    }
+
+    /// This is ok under both Stacked Borrows and Tree Borrows.
+    #[test]
+    fn test_ok_copy_nonoverlapping() {
+        let mut val = [1_u8, 2];
+        let dst = unsafe { val.as_mut_ptr().add(1) };
+        let src = val.as_ptr();
+        unsafe { ptr::copy_nonoverlapping(src, dst, 1) };
+    }
+
+    /// This is UB under Stacked Borrows but ok under Tree Borrows.
+    /// See [#134](https://github.com/rust-lang/unsafe-code-guidelines/issues/134).
+    #[test]
+    fn test_raw_ptr_restricted() {
+        let val = [1_u8, 2];
+        let ptr = &val[0] as *const u8;
+        let _v = unsafe { *ptr.add(1) };
+    }
+
+    /// This is UB under Stacked Borrows but ok under Tree Borrows.
+    /// Under SB, the parent of `_y` is `val`, which pops x off the stack.
+    #[test]
+    fn test_steal_borrow() {
         let mut val = 1_u8;
         let x: *mut u8 = &mut val;
         let _y: *mut u8 = &mut val; // not ok
@@ -85,14 +108,15 @@ mod borrows {
 
     /// This is not UB. The parent of `_y` is now `x`, so `x` stays on the stack.
     #[test]
-    fn test_ok_reborrow() {
+    fn test_ok_steal_borrow() {
         let mut val = 1_u8;
         let x: *mut u8 = &mut val;
         let _y: *mut u8 = unsafe { &mut *x }; // ok
         let _ = unsafe { *x };
     }
 
-    /// This is UB because reading x disables y.
+    /// This is UB under SB but ok under TB. Under SB, reading x disables y,
+    /// and Disabled does not grant read access.
     #[test]
     fn test_disable_unique() {
         let mut val = 1_u8;
@@ -114,7 +138,6 @@ mod borrows {
         let _z = unsafe { *y };
     }
 
-
     #[test]
     fn test_cell() {
         let x = 0_usize;
@@ -130,5 +153,17 @@ mod borrows {
         let _ = unsafe { *s };
         let _ = unsafe { *u };
         let _ = unsafe { *s };
+    }
+}
+
+#[cfg(test)]
+mod validity {
+    use core::mem;
+
+    #[test]
+    fn test_bad_bool() {
+        let x = 2_u8;
+        #[allow(clippy::transmute_int_to_bool)]
+        let _: bool = unsafe { mem::transmute(x) };
     }
 }
