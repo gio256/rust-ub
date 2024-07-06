@@ -51,9 +51,34 @@ mod borrows {
 
     #[test]
     fn test_dbg() {
-        let val = 1_u8;
+        let mut val = 1_u8;
         let alloc = get_alloc_id(&val as *const u8);
         dbg_borrows(alloc);
+
+        let x = &mut val as *const u8 as *mut u8;
+        dbg_borrows(alloc);
+
+        unsafe { *x = 2 };
+        dbg_borrows(alloc);
+    }
+
+    /// This is UB under Stacked Borrows but ok under Tree Borrows.
+    /// See [#257](https://github.com/rust-lang/unsafe-code-guidelines/issues/257)
+    #[test]
+    fn test_const_write() {
+        let mut val = 1_u8;
+        let x = &mut val as *const u8 as *mut u8;
+        unsafe { *x = 2 }; // UB
+    }
+
+    /// This is ok under both Stacked Borrows and Tree Borrows.
+    /// Under SB, the initial cast from &mut to *const / *mut determines
+    /// whether or not it is UB to write through the pointer.
+    #[test]
+    fn test_ok_const_write() {
+        let mut val = 1_u8;
+        let x = &mut val as *mut u8 as *const u8 as *mut u8;
+        unsafe { *x = 2 };
     }
 
     /// This is UB under Stacked Borrows but ok under Tree Borrows.
@@ -106,7 +131,8 @@ mod borrows {
         let _ = unsafe { *x }; // UB
     }
 
-    /// This is not UB. The parent of `_y` is now `x`, so `x` stays on the stack.
+    /// This is ok under both Stacked Borrows and Tree Borrows.
+    /// Under SB, the parent of `_y` is now `x`, so `x` stays on the stack.
     #[test]
     fn test_ok_steal_borrow() {
         let mut val = 1_u8;
@@ -115,8 +141,8 @@ mod borrows {
         let _ = unsafe { *x };
     }
 
-    /// This is UB under SB but ok under TB. Under SB, reading x disables y,
-    /// and Disabled does not grant read access.
+    /// This is UB under Stacked Borrows but ok under Tree Borrows.
+    /// Under SB, reading x disables y, and Disabled does not grant read access.
     #[test]
     fn test_disable_unique() {
         let mut val = 1_u8;
@@ -127,7 +153,8 @@ mod borrows {
         let _z = *y; // UB
     }
 
-    /// This is not UB because y is now a SharedReadWrite derived from the disabled Unique.
+    /// This is ok under both Stacked Borrows and Tree Borrows.
+    /// Under SB, y is now a SharedReadWrite derived from the disabled Unique.
     #[test]
     fn test_ok_disable_unique() {
         let mut val = 1_u8;
