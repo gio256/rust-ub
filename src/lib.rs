@@ -62,6 +62,19 @@ mod borrows {
         dbg_borrows(alloc);
     }
 
+    /// This is UB under both Stacked Borrows and Tree Borrows.
+    #[test]
+    fn test_protected() {
+        fn protect<T, F>(_x: &mut T, mut f: F) where F: FnMut() {
+            f();
+        }
+        let mut val = 1_u8;
+        let x = &mut val;
+        let y = x as *mut u8;
+        let f = || unsafe { *y = 2 };
+        protect(x, f);
+    }
+
     /// This is UB under Stacked Borrows but ok under Tree Borrows.
     /// See [#257](https://github.com/rust-lang/unsafe-code-guidelines/issues/257)
     #[test]
@@ -108,6 +121,8 @@ mod borrows {
     fn test_ok_copy_nonoverlapping() {
         let mut val = [1_u8, 2];
         let dst = unsafe { val.as_mut_ptr().add(1) };
+        // Under SB, this disables the Unique that dst is derive from, but the
+        // SharedReadWrite dst is still valid.
         let src = val.as_ptr();
         unsafe { ptr::copy_nonoverlapping(src, dst, 1) };
     }
