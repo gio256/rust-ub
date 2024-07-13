@@ -62,6 +62,22 @@ mod borrows {
         dbg_borrows(alloc);
     }
 
+    /// This is UB under Tree Borrows but ok under Stacked Borrows.
+    #[test]
+    fn test_2phase() {
+        struct Wrap(u8);
+        impl Wrap {
+            fn action(&mut self, _arg: u8) {}
+        }
+
+        let mut x = Wrap(1);
+        let y = &mut x.0 as *mut u8;
+        x.action({
+            unsafe { *y = 2 };
+            x.0
+        });
+    }
+
     /// This is UB under both Stacked Borrows and Tree Borrows.
     #[test]
     fn test_protected() {
