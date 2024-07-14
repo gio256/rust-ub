@@ -62,7 +62,7 @@ mod borrows {
         dbg_borrows(alloc);
     }
 
-    /// This is UB under Tree Borrows but ok under Stacked Borrows.
+    /// This is UB under Tree Borrows but not UB under Stacked Borrows.
     #[test]
     fn test_2phase() {
         struct Wrap(u8);
