@@ -43,23 +43,27 @@ mod borrows {
     use core::{mem, ptr};
 
     // Miri extern functions for inspecting the borrow state.
+    #[cfg(miri)]
     extern "Rust" {
         fn miri_get_alloc_id(ptr: *const u8) -> u64;
         fn miri_print_borrow_state(alloc_id: u64, show_unnamed: bool);
     }
 
     /// Retrieve the unique identifier for the allocation pointed to by `ptr`.
+    #[cfg(miri)]
     fn get_alloc_id(ptr: *const u8) -> u64 {
         unsafe { miri_get_alloc_id(ptr) }
     }
 
     /// Print (from the Miri interpreter) the contents of all borrows in an allocation.
+    #[cfg(miri)]
     fn dbg_borrows(alloc_id: u64) {
         println!();
         unsafe { miri_print_borrow_state(alloc_id, true) }
     }
 
     #[test]
+    #[cfg(miri)]
     fn test_dbg() {
         let mut val = 1_u8;
         let alloc = get_alloc_id(&val as *const u8);
