@@ -21,13 +21,12 @@ mod ptr {
 
     #[test]
     fn test_unaligned() {
-        // u32 has (on most platforms) alignment 4.
-        // Here we try to read a u32 from a pointer with alignment 2, causing UB.
+        // u32 has alignment 4 (on most platforms).
         #[repr(C, packed)]
         struct Packed(pub u8, pub u32);
         let packed = Packed(1, 2);
         let unaligned = ptr::addr_of!(packed.1);
-        let _ = unsafe { ptr::read(unaligned) }; // UB
+        let _ = unsafe { *unaligned }; // UB
     }
 
     #[test]
