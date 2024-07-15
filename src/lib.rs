@@ -20,6 +20,17 @@ mod ptr {
     }
 
     #[test]
+    fn test_unaligned() {
+        // u32 has (on most platforms) alignment 4.
+        // Here we try to read a u32 from a pointer with alignment 2, causing UB.
+        #[repr(C, packed)]
+        struct Packed(pub u8, pub u32);
+        let packed = Packed(1, 2);
+        let unaligned = ptr::addr_of!(packed.1);
+        let _ = unsafe { ptr::read(unaligned) }; // UB
+    }
+
+    #[test]
     fn test_double_drop() {
         let x = Box::new(1);
         let _y = unsafe { ptr::read(&x) };
