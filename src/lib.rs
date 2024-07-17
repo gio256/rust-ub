@@ -19,6 +19,7 @@ mod ptr {
         let _ = unsafe { q.offset(1) }; // UB
     }
 
+    /// Run with `-Zmiri-symbolic-alignment-check` to reliably detect UB.
     #[test]
     fn test_unaligned() {
         // u32 has alignment 4 (on most platforms).
