@@ -230,6 +230,21 @@ mod borrows {
 }
 
 #[cfg(test)]
+mod concurrency {
+    use std::thread;
+
+    #[test]
+    fn test_data_race() {
+        static mut GLOBAL: usize = 0;
+
+        let t0 = thread::spawn(|| unsafe { GLOBAL = 1 });
+        let t1 = thread::spawn(|| unsafe { GLOBAL = 2 });
+        t0.join().unwrap();
+        t1.join().unwrap();
+    }
+}
+
+#[cfg(test)]
 mod validity {
     use core::mem;
 
