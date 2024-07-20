@@ -40,8 +40,8 @@ mod ptr {
 
 #[cfg(test)]
 mod borrows {
-    use core::cell::{Cell, UnsafeCell};
-    use core::{mem, ptr};
+    use core::cell::UnsafeCell;
+    use core::ptr;
 
     // Miri extern functions for inspecting the borrow state.
     #[cfg(miri)]
@@ -96,7 +96,7 @@ mod borrows {
     /// This is UB under both Stacked Borrows and Tree Borrows.
     #[test]
     fn test_protected() {
-        fn protect<T, F>(_x: &mut T, mut f: F) where F: FnMut() {
+        fn protect<T, F: FnMut()>(_x: &mut T, mut f: F) {
             f();
         }
         let mut val = 1_u8;
