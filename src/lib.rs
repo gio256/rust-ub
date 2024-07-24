@@ -216,6 +216,13 @@ mod ptr {
     }
 
     #[test]
+    fn test_deref_fn_ptr() {
+        fn f() {}
+        let p = f as *const u8;
+        let _v = unsafe { *p }; // UB
+    }
+
+    #[test]
     fn test_double_drop() {
         let x = Box::new(1);
         let _y = unsafe { ptr::read(&x) };
