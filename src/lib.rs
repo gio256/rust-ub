@@ -204,6 +204,13 @@ mod ptr {
         let _ = unsafe { q.offset(1) }; // UB
     }
 
+    #[test]
+    fn test_use_oob() {
+        let val: [u8; 0] = [];
+        let unaligned = val.as_ptr();
+        let _: u8 = unsafe { *unaligned }; // UB
+    }
+
     /// Run with `-Zmiri-symbolic-alignment-check` to reliably detect UB.
     #[test]
     fn test_unaligned() {
