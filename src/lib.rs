@@ -210,9 +210,21 @@ mod ptr {
         // u32 has alignment 4 (on most platforms).
         #[repr(C, packed)]
         struct Packed(pub u8, pub u32);
+
         let packed = Packed(1, 2);
         let unaligned = ptr::addr_of!(packed.1);
         let _ = unsafe { *unaligned }; // UB
+    }
+
+    /// Run with `-Zmiri-symbolic-alignment-check` to reliably detect UB.
+    #[test]
+    fn test_unaligned_ref() {
+        #[repr(align(2))]
+        struct Foo<T>(T);
+
+        let val = [1_u8, 2];
+        let unaligned = val.as_ptr() as *const Foo<u8>;
+        let _ = unsafe { &*unaligned }; // UB
     }
 
     #[test]
