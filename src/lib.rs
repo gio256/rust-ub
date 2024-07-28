@@ -253,6 +253,9 @@ mod ptr {
 #[cfg(test)]
 mod concurrency {
     use std::thread;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::Ordering::{Acquire, Release, Relaxed};
+    use std::sync::Arc;
 
     #[test]
     fn test_data_race() {
@@ -262,6 +265,46 @@ mod concurrency {
         let t1 = thread::spawn(|| unsafe { GLOBAL = 2 });
         t0.join().unwrap();
         t1.join().unwrap();
+    }
+
+    #[test]
+    fn test_release_sequence() {
+        #[derive(Clone, Copy)]
+        struct BadSend<T>(pub T);
+        unsafe impl<T> Send for BadSend<T> {}
+        unsafe impl<T> Sync for BadSend<T> {}
+
+        let mut val = 0usize;
+        let x = BadSend(&mut val as *mut usize);
+        let flag = Arc::new(AtomicBool::new(false));
+
+        let t0 = {
+            let flag = flag.clone();
+            thread::spawn(move || {
+                let x = x;
+                unsafe { *x.0 = 1 };
+                flag.store(true, Release);
+                // The store below breaks the release sequence headed by the
+                // store above.
+                flag.store(true, Relaxed);
+            })
+        };
+        let t1 = {
+            let flag = flag.clone();
+            thread::spawn(move || {
+                flag.swap(false, Relaxed);
+            })
+        };
+        let t2 = thread::spawn(move || {
+            if flag.load(Acquire) {
+                let x = x;
+                let v = unsafe { *x.0 };
+                assert_eq!(v, 1);
+            }
+        });
+        t0.join().unwrap();
+        t1.join().unwrap();
+        t2.join().unwrap();
     }
 }
 
