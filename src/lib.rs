@@ -267,7 +267,6 @@ mod concurrency {
         t1.join().unwrap();
     }
 
-    //TODO: only detects the data race with `-- --nocapture`?
     #[test]
     fn test_release_sequence() {
         #[derive(Clone, Copy)]
@@ -297,6 +296,7 @@ mod concurrency {
             })
         };
         let t2 = thread::spawn(move || {
+            thread::yield_now();
             if flag.load(Acquire) {
                 let x = x;
                 let v = unsafe { *x.0 };
