@@ -267,6 +267,7 @@ mod concurrency {
         t1.join().unwrap();
     }
 
+    //TODO: only detects the data race with `-- --nocapture`?
     #[test]
     fn test_release_sequence() {
         #[derive(Clone, Copy)]
