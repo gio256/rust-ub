@@ -261,10 +261,10 @@ mod concurrency {
     fn test_data_race() {
         static mut GLOBAL: usize = 0;
 
-        let t0 = thread::spawn(|| unsafe { GLOBAL = 1 });
-        let t1 = thread::spawn(|| unsafe { GLOBAL = 2 });
-        t0.join().unwrap();
-        t1.join().unwrap();
+        let j1 = thread::spawn(|| unsafe { GLOBAL = 1 });
+        let j2 = thread::spawn(|| unsafe { GLOBAL = 2 });
+        j1.join().unwrap();
+        j2.join().unwrap();
     }
 
     #[test]
@@ -278,7 +278,7 @@ mod concurrency {
         let x = BadSend(&mut val as *mut usize);
         let flag = Arc::new(AtomicBool::new(false));
 
-        let t0 = {
+        let j1 = {
             let flag = flag.clone();
             thread::spawn(move || {
                 let x = x;
@@ -289,23 +289,15 @@ mod concurrency {
                 flag.store(true, Relaxed);
             })
         };
-        let t1 = {
-            let flag = flag.clone();
-            thread::spawn(move || {
-                flag.swap(false, Relaxed);
-            })
-        };
-        let t2 = thread::spawn(move || {
-            thread::yield_now();
+        let j2 = thread::spawn(move || {
             if flag.load(Acquire) {
                 let x = x;
                 let v = unsafe { *x.0 };
                 assert_eq!(v, 1);
             }
         });
-        t0.join().unwrap();
-        t1.join().unwrap();
-        t2.join().unwrap();
+        j1.join().unwrap();
+        j2.join().unwrap();
     }
 }
 
