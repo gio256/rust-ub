@@ -165,6 +165,17 @@ mod borrows {
         let _z = unsafe { *y };
     }
 
+    /// This is UB under both Stacked Borrows and Tree Borrows.
+    /// See [#450](https://github.com/rust-lang/unsafe-code-guidelines/issues/450)
+    #[test]
+    fn test_sibling_ptr() {
+        let mut arr = [0_u8; 8];
+        let ptr1 = arr.as_mut_ptr();
+        let ptr2 = arr.as_mut_ptr();
+        unsafe { ptr1.write(1) };
+        unsafe { ptr2.write(1) };
+    }
+
     #[test]
     fn test_cell() {
         let x = 0_usize;
