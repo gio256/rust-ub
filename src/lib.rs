@@ -245,6 +245,21 @@ mod ptr {
         let _ = unsafe { &*unaligned }; // UB
     }
 
+    /// See https://www.ralfj.de/blog/2024/08/14/places.html
+    #[test]
+    fn test_place_expression() {
+        #[repr(packed)]
+        struct Struct {
+            field: u32
+        }
+        let x = Struct { field: 42 };
+        let ptr = ptr::addr_of!(x.field);
+        // This is ok
+        let _ptr_copy = unsafe { ptr::addr_of!(*ptr) };
+        // This is UB
+        let _val = unsafe { *ptr };
+    }
+
     #[test]
     fn test_deref_fn_ptr() {
         fn f() {}
