@@ -26,7 +26,7 @@ mod borrows {
     #[test]
     #[cfg(miri)]
     fn test_dbg() {
-        let mut val = 1_u8;
+        let val = 1_u8;
         let alloc = get_alloc_id(&val as *const u8);
         dbg_borrows(alloc);
     }
@@ -258,6 +258,17 @@ mod ptr {
         let _ptr_copy = unsafe { ptr::addr_of!(*ptr) };
         // This is UB
         let _val = unsafe { *ptr };
+    }
+
+    #[test]
+    fn test_underscore_place() {
+        let ptr = ptr::null::<i32>();
+        // This is ok
+        unsafe {
+            let _ = *ptr;
+        }
+        // This is UB
+        let _ = unsafe { *ptr };
     }
 
     #[test]
