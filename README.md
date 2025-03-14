@@ -1,4 +1,4 @@
-# rub
+# rust-ub
 Convenient examples of [undefined behavior](https://raphlinus.github.io/programming/rust/2018/08/17/undefined-behavior.html) in rust.
 
 ### Usage
