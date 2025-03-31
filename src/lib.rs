@@ -230,7 +230,7 @@ mod ptr {
         struct Packed(pub u8, pub u32);
 
         let packed = Packed(1, 2);
-        let unaligned = ptr::addr_of!(packed.1);
+        let unaligned = &raw const packed.1;
         let _ = unsafe { *unaligned }; // UB
     }
 
@@ -245,17 +245,19 @@ mod ptr {
         let _ = unsafe { &*unaligned }; // UB
     }
 
+    /// Run with `-Zmiri-symbolic-alignment-check` to reliably detect UB.
+    ///
     /// See https://www.ralfj.de/blog/2024/08/14/places.html
     #[test]
     fn test_place_expression() {
-        #[repr(packed)]
+        #[repr(C, packed)]
         struct Struct {
             field: u32
         }
         let x = Struct { field: 42 };
-        let ptr = ptr::addr_of!(x.field);
-        // This is ok
-        let _ptr_copy = unsafe { ptr::addr_of!(*ptr) };
+        let ptr = &raw const x.field;
+        // This is ok (safe, even)
+        let _ptr_copy = &raw const *ptr;
         // This is UB
         let _val = unsafe { *ptr };
     }
