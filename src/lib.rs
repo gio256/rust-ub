@@ -350,4 +350,16 @@ mod validity {
         #[allow(clippy::transmute_int_to_bool)]
         let _: bool = unsafe { mem::transmute(x) };
     }
+
+    /// Run with `-Zmiri-symbolic-alignment-check` to reliably detect UB.
+    #[test]
+    fn test_slice_ref() {
+        // this is ok
+        let slice_u32 = [1_u32; 8];
+        let _ = unsafe { mem::transmute::<[u32; 8], [u64; 4]>(slice_u32) };
+
+        // this is UB because we are transmuting to an unaligned reference
+        let ref_u32 = &[1_u32; 8];
+        let _ = unsafe { mem::transmute::<&[u32; 8], &[u64; 4]>(ref_u32) };
+    }
 }
