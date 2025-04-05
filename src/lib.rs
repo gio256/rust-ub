@@ -106,7 +106,7 @@ mod borrows {
     fn test_ok_copy_nonoverlapping() {
         let mut val = [1_u8, 2];
         let dst = unsafe { val.as_mut_ptr().add(1) };
-        // Under SB, this disables the Unique that dst is derive from, but the
+        // Under SB, this disables the Unique that dst is derived from, but the
         // SharedReadWrite dst is still valid.
         let src = val.as_ptr();
         unsafe { ptr::copy_nonoverlapping(src, dst, 1) };
@@ -166,6 +166,7 @@ mod borrows {
     }
 
     /// This is UB under both Stacked Borrows and Tree Borrows.
+    ///
     /// See [#450](https://github.com/rust-lang/unsafe-code-guidelines/issues/450)
     #[test]
     fn test_sibling_ptr() {
