@@ -253,7 +253,7 @@ mod ptr {
     fn test_place_expression() {
         #[repr(C, packed)]
         struct Struct {
-            field: u32
+            field: u32,
         }
         let x = Struct { field: 42 };
         let ptr = &raw const x.field;
@@ -289,13 +289,12 @@ mod ptr {
     }
 }
 
-
 #[cfg(test)]
 mod concurrency {
-    use std::thread;
     use std::sync::atomic::AtomicBool;
-    use std::sync::atomic::Ordering::{Acquire, Release, Relaxed};
+    use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
     use std::sync::Arc;
+    use std::thread;
 
     #[test]
     fn test_data_race() {
